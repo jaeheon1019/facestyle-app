@@ -1,8 +1,8 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-from tensorflow.keras.models import load_model
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+import keras
+from keras.applications.mobilenet_v2 import preprocess_input
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,7 +31,7 @@ HAIR_TIPS = {
 
 @st.cache_resource
 def load_face_model():
-    return load_model(MODEL_PATH)
+     return keras.saving.load_model(MODEL_PATH)
 
 def predict_face_shape(image, model):
     img = image.resize((224, 224))
