@@ -100,7 +100,7 @@ if uploaded_file is not None:
     st.subheader(f'✂️ {gender} {face_shape} 추천 헤어스타일')
     hair_images = get_hair_images(face_shape, gender)
 
-if hair_images:
+    if hair_images:
         cols = st.columns(min(len(hair_images), 3))
         for i, img_path in enumerate(hair_images):
             with cols[i % 3]:
