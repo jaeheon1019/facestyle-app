@@ -1,15 +1,13 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import keras
-from keras.applications.mobilenet_v2 import preprocess_input
+import onnxruntime as ort
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, 'mobilenet_final.keras')
+MODEL_PATH = os.path.join(BASE_DIR, 'mobilenet_final.onnx')
 HAIR_DIR = os.path.join(BASE_DIR, 'hair_images')
 
-# 모델 클래스 순서 그대로 유지 (알파벳 순서)
 CLASSES = ['하트형', '긴얼굴형', '달걀형', '둥근형', '각진형']
 
 HAIR_TIPS = {
@@ -29,19 +27,25 @@ HAIR_TIPS = {
     }
 }
 
+def preprocess_image(image):
+    img = image.resize((224, 224)).convert('RGB')
+    img_array = np.array(img).astype(np.float32)
+    # MobileNetV2 preprocess_input 수동 구현
+    img_array = (img_array / 127.5) - 1.0
+    img_array = np.expand_dims(img_array, axis=0)
+    return img_array
+
 @st.cache_resource
 def load_face_model():
-     return keras.saving.load_model(MODEL_PATH)
+    return ort.InferenceSession(MODEL_PATH)
 
-def predict_face_shape(image, model):
-    img = image.resize((224, 224))
-    img_array = np.array(img.convert('RGB'))
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = preprocess_input(img_array.astype(np.float32))
-    predictions = model.predict(img_array, verbose=0)
-    predicted_idx = np.argmax(predictions[0])
-    confidence = predictions[0][predicted_idx] * 100
-    return CLASSES[predicted_idx], confidence, predictions[0]
+def predict_face_shape(image, session):
+    img_array = preprocess_image(image)
+    input_name = session.get_inputs()[0].name
+    predictions = session.run(None, {input_name: img_array})[0][0]
+    predicted_idx = np.argmax(predictions)
+    confidence = predictions[predicted_idx] * 100
+    return CLASSES[predicted_idx], confidence, predictions
 
 def get_hair_images(face_shape, gender):
     folder = os.path.join(HAIR_DIR, gender, face_shape)
@@ -60,15 +64,12 @@ st.markdown('전면 사진을 업로드하면 얼굴형을 분석하고 어울�
 st.divider()
 
 with st.spinner('모델 불러오는 중...'):
-    model = load_face_model()
+    session = load_face_model()
 
-# 성별 선택
 st.subheader('성별을 선택하세요')
 gender = st.radio('', ['남성', '여성'], horizontal=True)
-
 st.divider()
 
-# 사진 업로드
 uploaded_file = st.file_uploader('전면 사진을 업로드하세요', type=['jpg', 'jpeg', 'png', 'webp'])
 
 if uploaded_file is not None:
@@ -80,7 +81,7 @@ if uploaded_file is not None:
         st.image(image, use_container_width=True)
 
     with st.spinner('얼굴형 분석 중...'):
-        face_shape, confidence, all_probs = predict_face_shape(image, model)
+        face_shape, confidence, all_probs = predict_face_shape(image, session)
 
     with col2:
         st.subheader('분석 결과')
