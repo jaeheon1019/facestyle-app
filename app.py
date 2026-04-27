@@ -100,10 +100,4 @@ if uploaded_file is not None:
     st.subheader(f'✂️ {gender} {face_shape} 추천 헤어스타일')
     hair_images = get_hair_images(face_shape, gender)
 
-    if hair_images:
-        cols = st.columns(min(len(hair_images), 3))
-        for i, img_path in enumerate(hair_images):
-            with cols[i % 3]:
-                st.image(img_path, use_container_width=True)
-    else:
-        st.warning(f'hair_images/{gender}/{face_shape}/ 폴더에 이미지를 넣어주세요!')
+    https://facestyle-app-csklqkmtacgafku3ivzhdy.streamlit.app/
