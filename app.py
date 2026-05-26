@@ -6,7 +6,7 @@ import cv2
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, 'mobilenet_final.onnx')
+MODEL_PATH = os.path.join(BASE_DIR, 'mobilenet_v3_final.onnx')
 HAIR_DIR = os.path.join(BASE_DIR, 'hair_images')
 HAIR_AR_DIR = os.path.join(BASE_DIR, 'hair_images_transparent')
 
