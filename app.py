@@ -4,9 +4,10 @@ from PIL import Image
 import onnxruntime as ort
 import cv2
 import os
+import gdown
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, 'mobilenet_v3_final.onnx')
+MODEL_PATH = os.path.join(BASE_DIR, 'efficientnetv2s_final.onnx')
 HAIR_DIR = os.path.join(BASE_DIR, 'hair_images')
 HAIR_AR_DIR = os.path.join(BASE_DIR, 'hair_images_transparent')
 
@@ -29,8 +30,17 @@ HAIR_TIPS = {
     }
 }
 
+# 모델 다운로드
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        with st.spinner('모델 다운로드 중... (최초 1회만)'):
+            gdown.download(
+                'https://drive.google.com/uc?id=1G23ubAju58ULO8XHks5uzCBvrYjEUe5U',
+                MODEL_PATH, quiet=False
+            )
+
 def preprocess_image(image):
-    img = image.resize((224, 224)).convert('RGB')
+    img = image.resize((384, 384)).convert('RGB')  # ← 384x384로 변경
     img_array = np.array(img).astype(np.float32)
     img_array = (img_array / 127.5) - 1.0
     img_array = np.expand_dims(img_array, axis=0)
@@ -38,6 +48,7 @@ def preprocess_image(image):
 
 @st.cache_resource
 def load_face_model():
+    download_model()
     return ort.InferenceSession(MODEL_PATH)
 
 @st.cache_resource
@@ -63,41 +74,35 @@ def get_hair_images(face_shape, gender, ar=False):
     return images
 
 def apply_hair_ar(face_pil, hair_png_path, face_detector):
-    """얼굴 위에 헤어스타일 PNG 오버레이"""
-    # 얼굴 감지
     face_cv = cv2.cvtColor(np.array(face_pil), cv2.COLOR_RGB2BGR)
     gray = cv2.cvtColor(face_cv, cv2.COLOR_BGR2GRAY)
     faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80))
-    
+
     if len(faces) == 0:
         return None, "얼굴을 감지하지 못했어요. 정면 사진을 올려주세요!"
-    
+
     x, y, w, h = faces[0]
-    
-    # 헤어 PNG 로드
+
     hair = Image.open(hair_png_path).convert('RGBA')
     face_rgba = face_pil.convert('RGBA')
-    
-    # 헤어 크기 조정 (얼굴 너비 기준)
+
     hair_width  = int(w * 1.6)
     hair_height = int(hair.size[1] * (hair_width / hair.size[0]))
     hair = hair.resize((hair_width, hair_height), Image.LANCZOS)
-    
-    # 헤어 위치: 얼굴 위쪽
+
     hair_x = x - int((hair_width - w) / 2)
     hair_y = y - int(hair_height * 0.75)
     hair_x = max(0, hair_x)
     hair_y = max(0, hair_y)
-    
-    # 오버레이
+
     result = face_rgba.copy()
     paste_w = min(hair_width, face_pil.width - hair_x)
     paste_h = min(hair_height, face_pil.height - hair_y)
-    
+
     if paste_w > 0 and paste_h > 0:
         hair_cropped = hair.crop((0, 0, paste_w, paste_h))
         result.paste(hair_cropped, (hair_x, hair_y), hair_cropped)
-    
+
     return result.convert('RGB'), None
 
 # ======================== UI ========================
@@ -142,7 +147,6 @@ if uploaded_file is not None:
 
     st.divider()
 
-    # 헤어스타일 추천
     st.subheader(f'✂️ {gender} {face_shape} 추천 헤어스타일')
     hair_images = get_hair_images(face_shape, gender, ar=False)
 
@@ -157,8 +161,7 @@ if uploaded_file is not None:
 
     st.divider()
 
-    # AR 기능
-    st.subheader(f'🪄 AR 헤어스타일 적용')
+    st.subheader('🪄 AR 헤어스타일 적용')
     st.markdown('추천 헤어스타일을 내 사진에 직접 적용해봐요!')
 
     ar_images = get_hair_images(face_shape, gender, ar=True)
