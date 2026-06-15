@@ -40,12 +40,13 @@ def download_model():
             )
 
 def preprocess_image(image):
-    img = image.resize((384, 384)).convert('RGB')  # ← 384x384로 변경
+    img = image.resize((384, 384)).convert('RGB')
     img_array = np.array(img).astype(np.float32)
-    img_array = (img_array / 127.5) - 1.0
+    # EfficientNetV2S 전처리 - 0~1 범위로만 정규화
+    img_array = img_array / 255.0
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
-
+    
 @st.cache_resource
 def load_face_model():
     download_model()
