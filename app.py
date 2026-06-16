@@ -2,7 +2,6 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 import onnxruntime as ort
-import cv2
 import os
 import gdown
 
@@ -30,7 +29,6 @@ HAIR_TIPS = {
     }
 }
 
-# 모델 다운로드
 def download_model():
     if not os.path.exists(MODEL_PATH):
         with st.spinner('모델 다운로드 중... (최초 1회만)'):
@@ -44,19 +42,13 @@ def preprocess_image(image):
         image = image.convert('RGB')
     img = image.resize((384, 384), Image.LANCZOS)
     img_array = np.array(img).astype(np.float32)
-    # 전처리 없음 - raw 픽셀값 그대로
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
-    
+
 @st.cache_resource
 def load_face_model():
     download_model()
     return ort.InferenceSession(MODEL_PATH)
-
-@st.cache_resource
-def load_face_detector():
-    cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-    return cv2.CascadeClassifier(cascade_path)
 
 def predict_face_shape(image, session):
     img_array = preprocess_image(image)
@@ -75,38 +67,6 @@ def get_hair_images(face_shape, gender, ar=False):
                 images.append(os.path.join(folder, f))
     return images
 
-def apply_hair_ar(face_pil, hair_png_path, face_detector):
-    face_cv = cv2.cvtColor(np.array(face_pil), cv2.COLOR_RGB2BGR)
-    gray = cv2.cvtColor(face_cv, cv2.COLOR_BGR2GRAY)
-    faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80))
-
-    if len(faces) == 0:
-        return None, "얼굴을 감지하지 못했어요. 정면 사진을 올려주세요!"
-
-    x, y, w, h = faces[0]
-
-    hair = Image.open(hair_png_path).convert('RGBA')
-    face_rgba = face_pil.convert('RGBA')
-
-    hair_width  = int(w * 1.6)
-    hair_height = int(hair.size[1] * (hair_width / hair.size[0]))
-    hair = hair.resize((hair_width, hair_height), Image.LANCZOS)
-
-    hair_x = x - int((hair_width - w) / 2)
-    hair_y = y - int(hair_height * 0.75)
-    hair_x = max(0, hair_x)
-    hair_y = max(0, hair_y)
-
-    result = face_rgba.copy()
-    paste_w = min(hair_width, face_pil.width - hair_x)
-    paste_h = min(hair_height, face_pil.height - hair_y)
-
-    if paste_w > 0 and paste_h > 0:
-        hair_cropped = hair.crop((0, 0, paste_w, paste_h))
-        result.paste(hair_cropped, (hair_x, hair_y), hair_cropped)
-
-    return result.convert('RGB'), None
-
 # ======================== UI ========================
 st.set_page_config(page_title='얼굴형 헤어스타일 추천', page_icon='💇', layout='centered')
 
@@ -116,7 +76,6 @@ st.divider()
 
 with st.spinner('모델 불러오는 중...'):
     session = load_face_model()
-    face_detector = load_face_detector()
 
 st.subheader('성별을 선택하세요')
 gender = st.radio('', ['남성', '여성'], horizontal=True)
@@ -163,27 +122,16 @@ if uploaded_file is not None:
 
     st.divider()
 
-    st.subheader('🪄 AR 헤어스타일 적용')
-    st.markdown('추천 헤어스타일을 내 사진에 직접 적용해봐요!')
+    st.subheader('🪄 AR 헤어스타일 적용 예시')
+    st.markdown('해당 얼굴형에 어울리는 헤어스타일 적용 예시예요!')
 
     ar_images = get_hair_images(face_shape, gender, ar=True)
 
     if ar_images:
-        hair_names = [os.path.splitext(os.path.basename(p))[0] for p in ar_images]
-        selected_hair = st.selectbox('적용할 헤어스타일 선택', hair_names)
-        selected_path = ar_images[hair_names.index(selected_hair)]
-
-        if st.button('AR 적용하기'):
-            with st.spinner('헤어스타일 적용 중...'):
-                ar_result, error = apply_hair_ar(image, selected_path, face_detector)
-
-            if error:
-                st.error(error)
-            else:
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.image(image, caption='원본', use_container_width=True)
-                with col2:
-                    st.image(ar_result, caption=f'AR 적용: {selected_hair}', use_container_width=True)
+        cols = st.columns(min(len(ar_images), 3))
+        for i, img_path in enumerate(ar_images):
+            with cols[i % 3]:
+                filename = os.path.splitext(os.path.basename(img_path))[0]
+                st.image(img_path, caption=filename, use_container_width=True)
     else:
-        st.warning(f'hair_images_transparent/{gender}/{face_shape}/ 폴더에 PNG 이미지를 넣어주세요!')
+        st.warning(f'hair_images_transparent/{gender}/{face_shape}/ 폴더에 이미지를 넣어주세요!')
