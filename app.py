@@ -42,8 +42,10 @@ def download_model():
 def preprocess_image(image):
     img = image.resize((384, 384)).convert('RGB')
     img_array = np.array(img).astype(np.float32)
-    # EfficientNetV2S 전처리 - 0~1 범위로만 정규화
-    img_array = img_array / 255.0
+    # EfficientNetV2 preprocess_input 정확한 공식
+    mean = np.array([0.485, 0.456, 0.406]) * 255.0
+    std  = np.array([0.229, 0.224, 0.225]) * 255.0
+    img_array = (img_array - mean) / std
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
     
