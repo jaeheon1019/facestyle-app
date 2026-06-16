@@ -2,5 +2,4 @@ streamlit==1.45.0
 onnxruntime==1.24.1
 pillow
 numpy
-opencv-python-headless
 gdown
