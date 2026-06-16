@@ -40,7 +40,10 @@ def download_model():
             )
 
 def preprocess_image(image):
-    img = image.resize((384, 384)).convert('RGB')
+    # RGBA나 다른 모드면 RGB로 강제 변환
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    img = image.resize((384, 384), Image.LANCZOS)
     img_array = np.array(img).astype(np.float32)
     mean = np.array([0.485, 0.456, 0.406], dtype=np.float32) * 255.0
     std  = np.array([0.229, 0.224, 0.225], dtype=np.float32) * 255.0
