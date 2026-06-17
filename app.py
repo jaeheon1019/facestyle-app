@@ -122,16 +122,20 @@ if uploaded_file is not None:
 
     st.divider()
 
-    st.subheader('🪄 AR 헤어스타일 적용 예시')
-    st.markdown('해당 얼굴형에 어울리는 헤어스타일 적용 예시예요!')
+st.subheader('🪄 AR 헤어스타일 적용 예시')
+st.markdown('해당 얼굴형에 어울리는 헤어스타일 적용 예시예요!')
 
-    ar_images = get_hair_images(face_shape, gender, ar=True)
+ar_images = get_hair_images(face_shape, gender, ar=True)
 
-    if ar_images:
-        cols = st.columns(min(len(ar_images), 3))
-        for i, img_path in enumerate(ar_images):
-            with cols[i % 3]:
-                filename = os.path.splitext(os.path.basename(img_path))[0]
-                st.image(img_path, caption=filename, use_container_width=True)
-    else:
-        st.warning(f'hair_images_transparent/{gender}/{face_shape}/ 폴더에 이미지를 넣어주세요!')
+if ar_images:
+    hair_names = [os.path.splitext(os.path.basename(p))[0] for p in ar_images]
+    selected_hair = st.selectbox('헤어스타일을 선택하세요', hair_names)
+    selected_path = ar_images[hair_names.index(selected_hair)]
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.image(image, caption='원본', use_container_width=True)
+    with col2:
+        st.image(selected_path, caption=f'{selected_hair} 적용 예시', use_container_width=True)
+else:
+    st.warning(f'hair_images_transparent/{gender}/{face_shape}/ 폴더에 이미지를 넣어주세요!')
